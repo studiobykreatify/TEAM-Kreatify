@@ -1,0 +1,2082 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Kreatify</title>
+  <script>if(sessionStorage.getItem('tkAuth')==='1')document.documentElement.classList.add('tk-authed');</script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #4E4997; --primary-dark: #3d3878; --accent: #EB6424; --accent-hover: #F49E60;
+      --bg: #F0F5FA; --card: #FFFFFF; --text: #1e293b; --muted: #334155; --border: #D1D5DB;
+      --radius-card: 16px; --radius-btn: 12px; --shadow: 0 4px 20px rgba(78, 73, 151, 0.1);
+    }
+    body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 88px; background: var(--primary); display: flex; flex-direction: column; align-items: center;
+      padding: 16px 0; position: fixed; left: 0; top: 0; bottom: 0; z-index: 50; overflow-y: auto;
+    }
+    .sidebar-btn {
+      width: 76px; min-height: 44px; padding: 6px 4px; border: none; background: transparent;
+      color: rgba(255,255,255,0.7); font-size: 9px; font-weight: 600; font-family: inherit; cursor: pointer;
+      border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; margin-bottom: 8px;
+    }
+    .sidebar-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .sidebar-btn.active { background: var(--accent); color: #fff; }
+    .sidebar-btn .icon { font-size: 18px; }
+    .sidebar-spacer { flex: 1; }
+    .main { margin-left: 88px; flex: 1; min-height: 100vh; }
+    .header { padding: 20px 32px 12px; display: flex; align-items: center; gap: 16px; }
+    .logo-img { height: 44px; }
+    .app-title { font-size: 22px; font-weight: 700; color: var(--primary); }
+    .logo-tagline { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; color: var(--primary); font-size: 15px; }
+    .sync-status { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; margin-left: auto; }
+    .sync-status.offline { background: #f1f5f9; color: var(--muted); }
+    .sync-status.online { background: #dcfce7; color: #166534; }
+    .sync-status.syncing { background: #fef3c7; color: #b45309; }
+    .sync-status.error { background: #fee2e2; color: #b91c1c; }
+    .content { padding: 8px 32px 48px; }
+    .view { display: none; }
+    .view.active { display: block; }
+    .avatar-chip { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; color: #fff; font-size: 9px; font-weight: 700; margin-right: 4px; vertical-align: middle; }
+    .avatar-chip.sm { width: 18px; height: 18px; font-size: 8px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .toolbar .spacer { flex: 1; }
+    .btn {
+      padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; font-family: inherit;
+      cursor: pointer; border: none;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--primary); color: #fff; }
+    .btn-outline { background: #fff; color: var(--primary); border: 1.5px solid var(--border); }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .panel-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .modal-actions-left { margin-right: auto; }
+    .kunden-list, .task-list { display: flex; flex-direction: column; gap: 14px; }
+    .kunden-card, .task-card {
+      background: var(--card); border-radius: var(--radius-card); box-shadow: var(--shadow);
+      padding: 18px 22px; cursor: pointer;
+    }
+    .kunden-card:hover, .task-card:hover { box-shadow: 0 8px 28px rgba(78, 73, 151, 0.14); }
+    .kunden-name, .task-title { font-size: 18px; font-weight: 700; }
+    .kunden-meta { font-size: 13px; color: var(--muted); margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #EDE9FE; color: var(--primary); }
+    .empty-state { text-align: center; padding: 48px; color: var(--muted); }
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-bar button, .filter-bar select {
+      padding: 8px 12px; border-radius: 12px; border: 1.5px solid var(--border); font-family: inherit; font-size: 13px; cursor: pointer;
+    }
+    .filter-bar button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .overlay[hidden] { display: none !important; }
+    .overlay {
+      position: fixed; inset: 0; background: rgba(30,41,59,0.5); z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal {
+      background: var(--card); border-radius: var(--radius-card); padding: 24px; width: 92%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow);
+    }
+    .modal h2 { font-family: 'Instrument Serif', Georgia, serif; margin-bottom: 16px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit;
+    }
+    .team-checkboxes label { margin-right: 12px; font-size: 13px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+    #panel-overlay[hidden], #slide-panel[hidden] { display: none !important; }
+    #panel-overlay { position: fixed; inset: 0; background: rgba(78,73,151,0.3); z-index: 900; }
+    #slide-panel {
+      position: fixed; top: 0; right: 0; width: 420px; max-width: 100%; height: 100%; background: var(--card);
+      z-index: 950; padding: 24px; overflow-y: auto; box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+    }
+    .panel-close { float: right; border: none; background: none; font-size: 24px; cursor: pointer; }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--primary); color: #fff;
+      padding: 12px 20px; border-radius: 12px; z-index: 2000; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .toast.show { opacity: 1; }
+    .monat-nav { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 16px; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden; }
+    .cal-head { background: var(--primary); color: #fff; padding: 8px; text-align: center; font-size: 11px; }
+    .cal-day { background: var(--card); min-height: 96px; padding: 6px; cursor: pointer; display: flex; flex-direction: column; }
+    .cal-day.today { outline: 2px solid var(--accent); }
+    .cal-day-num { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+    .cal-day-tasks { flex: 1; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+    .cal-task-pill { font-size: 10px; padding: 3px 5px; background: #f1f5f9; border-radius: 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cal-task-pill:hover { background: #e2e8f0; }
+    .cal-day-item { padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .cal-day-item:hover { background: #f8fafc; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .team-toolbar { margin-bottom: 12px; justify-content: space-between; }
+    .team-chip { border-left: 4px solid var(--chip-color, var(--primary)); }
+    .team-matrix { overflow-x: auto; border-radius: 12px; box-shadow: var(--shadow); background: var(--card); }
+    .team-matrix-row { display: grid; grid-template-columns: 120px repeat(7, minmax(100px, 1fr)); border-bottom: 1px solid var(--border); }
+    .team-matrix-row.head { background: var(--primary); color: #fff; font-size: 12px; }
+    .team-matrix-row.head .team-matrix-day strong { display: block; font-size: 13px; }
+    .team-matrix-person, .team-matrix-day, .team-matrix-cell { padding: 10px 8px; border-right: 1px solid var(--border); }
+    .team-matrix-person { font-weight: 700; font-size: 13px; }
+    .team-person-name { font-weight: 700; }
+    .team-matrix-cell { min-height: 72px; vertical-align: top; }
+    .team-cell-task { background: #f8fafc; padding: 6px 8px; margin-bottom: 4px; border-radius: 8px; cursor: pointer; font-size: 11px; border-left: 3px solid var(--accent); }
+    .team-cell-task strong { display: block; font-size: 12px; }
+    .team-cell-task small { color: var(--muted); }
+    .team-cell-empty { color: #cbd5e1; font-size: 12px; }
+    .team-upcoming { margin-top: 24px; }
+    .team-upcoming-block { margin-bottom: 16px; }
+    .team-upcoming-block h3 { font-size: 16px; margin-bottom: 8px; }
+    .team-upcoming-block ul { list-style: none; }
+    .team-upcoming-block li { padding: 8px 12px; background: var(--card); border-radius: 10px; margin-bottom: 6px; cursor: pointer; box-shadow: var(--shadow); font-size: 13px; }
+    .task-card.done { opacity: 0.65; }
+    .task-card.done .task-title { text-decoration: line-through; }
+    .team-cell-task.done { background: #ecfdf5; border-left-color: #22c55e; opacity: 1; }
+    .team-cell-task.done strong { text-decoration: none; }
+    .task-done-check { color: #16a34a; font-weight: 800; margin-left: 6px; font-size: 14px; }
+    .cal-task-pill.done { background: #ecfdf5; }
+    .link-row { display: grid; grid-template-columns: 100px 1fr 1.5fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .link-row input, .link-row select { padding: 8px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 12px; }
+    .client-links { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+    .client-links a { color: var(--primary); font-size: 13px; font-weight: 600; word-break: break-all; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .notify-modal { max-width: 420px; }
+    .notify-body { font-size: 14px; line-height: 1.6; margin: 12px 0 20px; }
+    .notify-body strong { color: var(--primary); }
+    .notify-badge { display: inline-block; background: #FFF8ED; color: #B84A12; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; margin-bottom: 8px; }
+    .upcoming-done { opacity: 0.85; }
+    .task-urgency-bar { height: 4px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+    .task-urgency-bar.sm { height: 3px; margin-bottom: 4px; }
+    .task-urgency-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+    .task-urgency-bar.overdue .task-urgency-fill { background: #dc2626 !important; }
+    .task-card .task-urgency-bar, .team-cell-task .task-urgency-bar { margin-bottom: 6px; }
+    #delete-code-error { color: #dc2626; font-size: 12px; margin-top: 6px; display: none; }
+    .shooting-pill { background: #fef3c7 !important; border-left: 3px solid #f59e0b !important; }
+    .birthday-pill { background: #fce7f3 !important; color: #9d174d; }
+    .task-images-preview { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+    .task-image-thumb { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; }
+    .task-image-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .task-image-thumb button { position: absolute; top: 2px; right: 2px; padding: 2px 6px; font-size: 10px; }
+    .birthday-list { list-style: none; }
+    .birthday-list li { padding: 10px 14px; background: var(--card); border-radius: 10px; margin-bottom: 8px; cursor: pointer; box-shadow: var(--shadow); }
+    .modal-wide { max-width: 560px; }
+    html:not(.tk-authed) .app { display: none !important; }
+    html.tk-authed #login-gate { display: none !important; }
+    #login-gate {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px; background: linear-gradient(160deg, var(--bg) 0%, #e8ecf4 50%, rgba(78, 73, 151, 0.08) 100%);
+    }
+    .login-card {
+      background: var(--card); border-radius: var(--radius-card); box-shadow: var(--shadow);
+      padding: 32px 28px; width: 100%; max-width: 400px;
+    }
+    .login-card h1 {
+      font-family: 'Instrument Serif', Georgia, serif; font-size: 28px; color: var(--primary);
+      margin-bottom: 6px; text-align: center;
+    }
+    .login-card .login-sub { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+    .login-card .form-group input { font-size: 14px; }
+    .login-card .btn-primary { width: 100%; padding: 12px; margin-top: 4px; }
+    #login-error {
+      display: none; margin-top: 12px; padding: 10px 12px; border-radius: 12px;
+      background: #fee2e2; color: #b91c1c; font-size: 13px; font-weight: 600; text-align: center;
+    }
+    #login-error.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="login-gate" role="dialog" aria-labelledby="login-title">
+    <div class="login-card">
+      <h1 id="login-title">Team Kreatify</h1>
+      <p class="login-sub">Enter the team password to continue</p>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Continue</button>
+        <p id="login-error" role="alert">Incorrect password. Please try again.</p>
+      </form>
+    </div>
+  </div>
+
+  <div class="app">
+    <nav class="sidebar">
+      <button type="button" class="sidebar-btn active" data-view="clients" onclick="TK.nav('clients')"><span class="icon">🏠</span><span>Clients</span></button>
+      <button type="button" class="sidebar-btn" data-view="tasks" onclick="TK.nav('tasks')"><span class="icon">✅</span><span>Tasks</span></button>
+      <button type="button" class="sidebar-btn" data-view="calendar" onclick="TK.nav('calendar')"><span class="icon">📅</span><span>Calendar</span></button>
+      <button type="button" class="sidebar-btn" data-view="team" onclick="TK.nav('team')"><span class="icon">📊</span><span>Team</span></button>
+      <button type="button" class="sidebar-btn" data-view="shooting" onclick="TK.nav('shooting')"><span class="icon">📷</span><span>Shooting</span></button>
+      <button type="button" class="sidebar-btn" data-view="teamcal" onclick="TK.nav('teamcal')"><span class="icon">📅</span><span>Team Events</span></button>
+      <div class="sidebar-spacer"></div>
+      <button type="button" class="sidebar-btn" onclick="TK.openTask()"><span class="icon">+</span></button>
+      <button type="button" class="sidebar-btn" data-view="settings" onclick="TK.nav('settings')"><span class="icon">⚙</span></button>
+    </nav>
+
+    <div class="main">
+      <header class="header">
+        <img class="logo-img" src="https://kreatify.mx/wp-content/uploads/2025/05/Kreatify-Logo-2025.png" alt="Kreatify" height="44">
+        <div>
+          <p class="app-title">Team Kreatify</p>
+          <p class="logo-tagline">Tasks & clients — shared team data</p>
+        </div>
+        <span id="sync-status" class="sync-status offline">Local only</span>
+      </header>
+
+      <div class="content">
+        <div class="view active" id="view-clients">
+          <div class="toolbar">
+            <button type="button" class="btn btn-primary" onclick="TK.editClient(null)">+ New Client</button>
+          </div>
+          <div class="kunden-list" id="clients-list"></div>
+        </div>
+
+        <div class="view" id="view-tasks">
+          <div class="toolbar">
+            <span class="spacer"></span>
+            <button type="button" class="btn btn-primary" onclick="TK.openTask()">+ New Task</button>
+          </div>
+          <div class="task-list" id="tasks-list"></div>
+        </div>
+
+        <div class="view" id="view-calendar">
+          <div class="monat-nav">
+            <button type="button" class="btn btn-outline" onclick="TK.calPrev()">←</button>
+            <strong id="cal-title"></strong>
+            <button type="button" class="btn btn-outline" onclick="TK.calNext()">→</button>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+
+        <div class="view" id="view-team">
+          <div class="toolbar team-toolbar">
+            <button type="button" class="btn btn-outline" onclick="TK.teamPrevWeek()">← Week</button>
+            <strong id="team-week-label"></strong>
+            <button type="button" class="btn btn-outline" onclick="TK.teamNextWeek()">Week →</button>
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Who has a task on which day? Filter by person or show all.</p>
+          <div class="filter-bar" id="team-person-filter"></div>
+          <div id="team-board"></div>
+          <div class="team-upcoming" id="team-upcoming"></div>
+        </div>
+
+        <div class="view" id="view-shooting">
+          <p class="muted" style="margin-bottom:12px">Month view — tasks with category <strong>Shooting</strong> appear here automatically.</p>
+          <div class="monat-nav">
+            <button type="button" class="btn btn-outline" onclick="TK.shootingCalPrev()">←</button>
+            <strong id="shooting-cal-title"></strong>
+            <button type="button" class="btn btn-outline" onclick="TK.shootingCalNext()">→</button>
+          </div>
+          <div class="cal-grid" id="shooting-cal-grid"></div>
+        </div>
+
+        <div class="view" id="view-teamcal">
+          <div class="toolbar">
+            <button type="button" class="btn btn-primary" onclick="TK.openBirthday()">+ Add Team Event</button>
+          </div>
+          <p class="muted" style="margin-bottom:12px">Team calendar — events (month overview).</p>
+          <div class="monat-nav">
+            <button type="button" class="btn btn-outline" onclick="TK.teamCalPrev()">←</button>
+            <strong id="teamcal-title"></strong>
+            <button type="button" class="btn btn-outline" onclick="TK.teamCalNext()">→</button>
+          </div>
+          <div class="cal-grid" id="teamcal-grid"></div>
+          <div id="birthdays-list" style="margin-top:24px"></div>
+        </div>
+
+        <div class="view" id="view-settings">
+          <div id="settings-form"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-overlay" hidden onclick="TK.closePanel()"></div>
+  <aside id="slide-panel" hidden></aside>
+
+  <div class="overlay" id="modal-client" hidden>
+    <div class="modal">
+      <h2 id="modal-client-title">Client</h2>
+      <form id="form-client">
+        <input type="hidden" id="client-id">
+        <div class="form-group"><label>Name</label><input type="text" id="cl-name" required></div>
+        <div class="form-group"><label>Contract start</label><input type="date" id="cl-contract-start"></div>
+        <div class="form-group"><label>Status</label>
+          <select id="cl-status"><option value="active">Active</option><option value="paused">Paused</option><option value="trial">Trial</option><option value="churned">Churned</option></select>
+        </div>
+        <div class="form-group"><label>Billing</label>
+          <select id="cl-billing"><option value="monthly">Monthly</option><option value="one-time">One-time</option></select>
+        </div>
+        <div class="form-group"><label>Posts / week</label><input type="number" id="cl-posts" min="0"></div>
+        <div class="form-group"><label>Stories / week</label><input type="number" id="cl-stories" min="0"></div>
+        <div class="form-group"><label>Instagram</label><input type="url" id="cl-instagram" placeholder="https://instagram.com/..."></div>
+        <div class="form-group"><label>Team</label><div class="team-checkboxes" id="cl-team-boxes"></div></div>
+        <div class="form-group"><label>Links (Dropbox, Drive, PDF)</label>
+          <div id="cl-links-editor"></div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="TK.addClientLinkRow()">+ Add link</button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-danger modal-actions-left" id="btn-delete-client" hidden onclick="TK.deleteClient()">Delete client</button>
+          <button type="button" class="btn btn-outline" onclick="TK.closeModal('modal-client')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay" id="modal-task" hidden>
+    <div class="modal modal-wide">
+      <h2 id="modal-task-title">Task</h2>
+      <form id="form-task">
+        <input type="hidden" id="task-id">
+        <div class="form-group"><label>Title *</label><input type="text" id="tk-title" required></div>
+        <div class="form-group"><label>Client *</label><select id="tk-client" required></select></div>
+        <div class="form-group"><label>Due date *</label><input type="date" id="tk-due" required></div>
+        <div class="form-group"><label>Category</label>
+          <select id="tk-category"><option>Grid</option><option>Shooting</option><option selected>Content</option><option>Design</option><option>Admin</option><option>Other</option></select>
+        </div>
+        <div class="form-group"><label>Priority</label>
+          <select id="tk-priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+        </div>
+        <div class="form-group"><label>Status</label>
+          <select id="tk-status"><option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="done">Done</option></select>
+        </div>
+        <div class="form-group"><label>Assigned to *</label><div class="team-checkboxes" id="tk-team-boxes"></div><p class="muted" style="margin-top:4px;">At least one person — shows on Calendar & Team.</p></div>
+        <div class="form-group"><label>Links (Dropbox, Drive, PDF…)</label>
+          <div id="tk-links-editor"></div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="TK.addLinkRow('tk-links-editor')">+ Add link</button>
+        </div>
+        <div class="form-group"><label>Photos</label>
+          <div id="tk-images-preview" class="task-images-preview"></div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="TK.pickTaskImages()">+ Add photo</button>
+          <p class="muted" style="margin-top:4px">Max 5 images, ~450 KB each. For large files use a Dropbox link.</p>
+        </div>
+        <div class="form-group"><label>Notes</label><textarea id="tk-notes" rows="2"></textarea></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="TK.closeModal('modal-task')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay" id="modal-birthday" hidden>
+    <div class="modal">
+      <h2 id="modal-birthday-title">Team Event</h2>
+      <form id="form-birthday">
+        <input type="hidden" id="birthday-id">
+        <div class="form-group"><label>Name *</label><input type="text" id="bd-name" required></div>
+        <div class="form-group"><label>Date *</label><input type="date" id="bd-date" required></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="bd-notes"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-danger modal-actions-left" id="btn-delete-birthday" hidden onclick="TK.deleteBirthday()">Delete</button>
+          <button type="button" class="btn btn-outline" onclick="TK.closeModal('modal-birthday')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay" id="modal-cal-day" hidden>
+    <div class="modal">
+      <h2 id="cal-day-title">Day</h2>
+      <div id="cal-day-tasks"></div>
+      <button type="button" class="btn btn-primary" style="margin-top:12px" onclick="TK.closeModal('modal-cal-day');TK.openTask()">+ Task on this day</button>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="TK.closeModal('modal-cal-day')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="modal-delete-confirm" hidden>
+    <div class="modal">
+      <h2>Delete client?</h2>
+      <p class="muted" id="delete-client-name" style="margin-bottom:12px"></p>
+      <p style="font-size:13px;margin-bottom:10px">Enter code to confirm:</p>
+      <input type="password" inputmode="numeric" id="delete-confirm-code" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:12px;font-size:18px;letter-spacing:4px;text-align:center" placeholder="••••" maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter')TK.confirmDeleteClient()">
+      <p id="delete-code-error">Wrong code. Deletion cancelled.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="TK.cancelDeleteClient()">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="TK.confirmDeleteClient()">Delete permanently</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="modal-notify" hidden>
+    <div class="modal notify-modal">
+      <span class="notify-badge" id="notify-badge"></span>
+      <h2 id="notify-title">Notification</h2>
+      <div class="notify-body" id="notify-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" onclick="TK.closeNotify()">OK</button>
+        <button type="button" class="btn btn-outline" onclick="TK.openTaskFromNotify()">Open task</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script>
+  (function () {
+    var PASS = 'KREATIFY2024';
+    var form = document.getElementById('login-form');
+    var input = document.getElementById('login-password');
+    var err = document.getElementById('login-error');
+
+    function unlock() {
+      sessionStorage.setItem('tkAuth', '1');
+      document.documentElement.classList.add('tk-authed');
+      err.classList.remove('show');
+    }
+
+    function showError() {
+      err.classList.add('show');
+      input.value = '';
+      input.focus();
+    }
+
+    if (document.documentElement.classList.contains('tk-authed')) return;
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (input.value === PASS) unlock();
+      else showError();
+    });
+    input.focus();
+  })();
+  </script>
+  <script>
+/* Team Kreatify */
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'todosKreatifyState';
+  var STORAGE_BACKUP_KEY = 'todosKreatifyState_backup';
+  var TEAM = {
+    Andrea: { color: '#4E4997', initial: 'A' },
+    Samuel: { color: '#EB6424', initial: 'S' },
+    Alin: { color: '#047857', initial: 'Al' },
+    Vic: { color: '#0369A1', initial: 'V' }
+  };
+  var TEAM_NAMES = ['Andrea', 'Samuel', 'Alin', 'Vic'];
+  var MAX_TASK_IMAGES = 5;
+  var MAX_IMAGE_BYTES = 450000;
+  var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var WEEKDAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var STATUS_LABELS = { active: 'Active', paused: 'Paused', trial: 'Trial', churned: 'Churned' };
+  var TASK_STATUS = { todo: 'To Do', in_progress: 'In Progress', done: 'Done' };
+  var LINK_TYPES = { dropbox: 'Dropbox', drive: 'Google Drive', pdf: 'PDF' };
+  var REMINDER_DAYS_BEFORE = 3;
+  var DELETE_CLIENT_CODE = '3004';
+  var DEFAULT_TASK_SPAN_DAYS = 14;
+  var DEFAULT_CLOUD_DB_URL = 'https://kreatify-team-default-rtdb.firebaseio.com';
+
+  var state = { clients: [], tasks: [], birthdays: [], alertsDismissed: {}, settings: {}, remindersShown: {} };
+  var currentView = 'clients';
+  var selectedClientId = null;
+  var clientStatusFilter = 'all';
+  var globalTeamFilter = null;
+  var teamViewFilter = null;
+  var calCursor = new Date();
+  var calDayPick = null;
+  var teamWeekStart = getMonday(new Date());
+  var shootingCalCursor = new Date();
+  var teamCalCursor = new Date();
+  var teamCalDayPick = null;
+  var clientLinksDraft = [];
+  var taskLinksDraft = [];
+  var taskImagesDraft = [];
+  var notifyQueue = [];
+  var notifyTaskId = null;
+  var pendingDeleteClientId = null;
+  var cloudPushTimer = null;
+  var cloudPushBlocked = false;
+  var cloudSyncTimer = null;
+  var cloudSyncing = false;
+
+  function $(id) { return document.getElementById(id); }
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+  }
+
+  function esc(s) {
+    if (s == null) return '';
+    var d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+
+  function fmtDate(d) {
+    var x = d instanceof Date ? d : parseDate(d);
+    return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  }
+
+  function parseDate(s) {
+    var p = String(s).split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]);
+  }
+
+  function formatDate(s) {
+    var d = parseDate(s);
+    return MONTH_NAMES[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+  }
+
+  function formatDateLong(s) {
+    var d = parseDate(s);
+    return WEEKDAY_LONG[d.getDay()] + ', ' + formatDate(s);
+  }
+
+  function getMonday(d) {
+    var x = new Date(d);
+    var dow = x.getDay();
+    x.setDate(x.getDate() - (dow === 0 ? 6 : dow - 1));
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+
+  function daysInMonth(y, m) {
+    return new Date(y, m + 1, 0).getDate();
+  }
+
+  function daysUntilDue(dueStr) {
+    var due = parseDate(dueStr);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+    return Math.round((due - today) / 86400000);
+  }
+
+  function migrateLegacyNames() {
+    function fixList(arr) {
+      return (arr || []).map(function (n) { return n === 'Aline' ? 'Alin' : n; });
+    }
+    state.tasks.forEach(function (t) { t.assignedTo = fixList(t.assignedTo); });
+    state.clients.forEach(function (c) { c.team = fixList(c.team); });
+    if (teamViewFilter === 'Aline') teamViewFilter = 'Alin';
+    if (globalTeamFilter === 'Aline') globalTeamFilter = 'Alin';
+  }
+
+  function ensureTaskShape(t) {
+    if (!t.links) t.links = [];
+    if (!t.images) t.images = [];
+    if (!t.createdAt) {
+      var due = parseDate(t.dueDate);
+      var start = new Date(due);
+      start.setDate(start.getDate() - DEFAULT_TASK_SPAN_DAYS);
+      t.createdAt = fmtDate(start);
+    }
+  }
+
+  function taskTimeProgress(task) {
+    if (task.status === 'done') return { pct: 100, overdue: false, done: true, daysLeft: daysUntilDue(task.dueDate) };
+    var due = parseDate(task.dueDate);
+    var start = parseDate(task.createdAt || task.dueDate);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+    var total = Math.max(1, Math.round((due - start) / 86400000));
+    var elapsed = Math.round((today - start) / 86400000);
+    var pct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+    var daysLeft = daysUntilDue(task.dueDate);
+    return { pct: pct, overdue: daysLeft < 0, done: false, daysLeft: daysLeft };
+  }
+
+  function urgencyBarColor(pct, overdue, done) {
+    if (done) return '#94a3b8';
+    if (overdue) return '#dc2626';
+    if (pct >= 85) return '#dc2626';
+    if (pct >= 60) return '#f59e0b';
+    return '#22c55e';
+  }
+
+  function taskUrgencyBarHtml(task, small) {
+    var p = taskTimeProgress(task);
+    var color = urgencyBarColor(p.pct, p.overdue, p.done);
+    var title = p.done
+      ? 'Completed'
+      : (p.overdue
+        ? 'Overdue — complete now'
+        : (p.daysLeft === 0 ? 'Due today' : p.daysLeft + ' day(s) left — ' + p.pct + '% of time elapsed'));
+    var cls = 'task-urgency-bar' + (small ? ' sm' : '') + (p.overdue && !p.done ? ' overdue' : '');
+    return '<div class="' + cls + '" title="' + esc(title) + '">' +
+      '<div class="task-urgency-fill" style="width:' + p.pct + '%;background:' + color + '"></div></div>';
+  }
+
+  function getReminderSlot() {
+    var h = new Date().getHours();
+    if (h >= 9 && h < 13) return 0;
+    if (h >= 14 && h < 19) return 1;
+    return -1;
+  }
+
+  function todayKey() {
+    return fmtDate(new Date());
+  }
+
+  function normalizeState(s) {
+    if (!s.clients) s.clients = [];
+    if (!s.tasks) s.tasks = [];
+    if (!s.alertsDismissed) s.alertsDismissed = {};
+    if (!s.settings) s.settings = {};
+    if (!s.remindersShown) s.remindersShown = {};
+    if (!s.birthdays) s.birthdays = [];
+    if (!s.meta) s.meta = {};
+    s.clients.forEach(ensureClientShape);
+    s.tasks.forEach(ensureTaskShape);
+    migrateLegacyNames();
+    return s;
+  }
+
+  function applyDefaultTeamCloudConfig() {
+    if (!state.settings) state.settings = {};
+    state.settings.cloudDbUrl = DEFAULT_CLOUD_DB_URL;
+    state.settings.cloudSync = true;
+  }
+
+  function getCloudDbUrl() {
+    var url = (state.settings && state.settings.cloudDbUrl) || DEFAULT_CLOUD_DB_URL;
+    url = String(url).trim().replace(/\/$/, '');
+    if (url && url.indexOf('.json') >= 0) url = url.replace(/\.json.*$/, '');
+    return url;
+  }
+
+  function isCloudEnabled() {
+    return !!(state.settings && state.settings.cloudSync && getCloudDbUrl());
+  }
+
+  function cloudDataUrl() {
+    return getCloudDbUrl() + '/teamKreatify.json';
+  }
+
+  function touchMeta() {
+    if (!state.meta) state.meta = {};
+    state.meta.updatedAt = Date.now();
+  }
+
+  function updateSyncStatus(mode, text) {
+    var el = $('sync-status');
+    if (!el) return;
+    el.className = 'sync-status ' + mode;
+    el.textContent = text;
+  }
+
+  function hasMeaningfulData() {
+    return state.clients.length > 0 || state.tasks.length > 0 || (state.birthdays && state.birthdays.length > 0);
+  }
+
+  function saveToStorage(opts) {
+    opts = opts || {};
+    touchMeta();
+    try {
+      var prev = localStorage.getItem(STORAGE_KEY);
+      if (prev && hasMeaningfulData()) {
+        localStorage.setItem(STORAGE_BACKUP_KEY, prev);
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      alert('Could not save: ' + e.message);
+    }
+    if (isCloudEnabled() && !cloudPushBlocked && opts.pushCloud !== false) {
+      if (opts.forceCloudPush || hasMeaningfulData()) scheduleCloudPush();
+    }
+  }
+
+  function applyRemoteState(remote, silent) {
+    if (!remote || typeof remote !== 'object') return false;
+    remote = normalizeState(remote);
+    var remoteAt = (remote.meta && remote.meta.updatedAt) || 0;
+    var localAt = (state.meta && state.meta.updatedAt) || 0;
+    var remoteHasClients = remote.clients.length > 0;
+    var localEmpty = state.clients.length === 0 && state.tasks.length === 0;
+
+    if (!(remoteAt > localAt || (localEmpty && remoteHasClients))) return false;
+
+    var keepSettings = state.settings || {};
+    cloudPushBlocked = true;
+    state = remote;
+    state.settings = Object.assign({}, remote.settings || {}, keepSettings);
+    state.settings.cloudDbUrl = keepSettings.cloudDbUrl || DEFAULT_CLOUD_DB_URL;
+    state.settings.cloudSync = keepSettings.cloudSync !== false;
+    cloudPushBlocked = false;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) { /* ignore */ }
+    populateClientSelects();
+    refreshAll();
+    if (!silent) showToast('Loaded from team cloud');
+    return true;
+  }
+
+  function scheduleCloudPush() {
+    clearTimeout(cloudPushTimer);
+    cloudPushTimer = setTimeout(pushToCloud, 500);
+  }
+
+  function pushToCloud() {
+    var url = cloudDataUrl();
+    if (!url) return Promise.resolve();
+    updateSyncStatus('syncing', 'Syncing…');
+    return fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state)
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      updateSyncStatus('online', 'Team sync on');
+      return true;
+    }).catch(function (err) {
+      updateSyncStatus('error', 'Sync error');
+      console.error('Cloud push failed', err);
+      return false;
+    });
+  }
+
+  function pullFromCloud(silent) {
+    var url = cloudDataUrl();
+    if (!url) return Promise.resolve(null);
+    if (cloudSyncing) return Promise.resolve(null);
+    cloudSyncing = true;
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function (remote) {
+      applyRemoteState(remote, silent);
+      updateSyncStatus('online', 'Team sync on');
+      return remote;
+    }).catch(function (err) {
+      updateSyncStatus('error', 'Sync error');
+      console.error('Cloud pull failed', err);
+      return null;
+    }).finally(function () {
+      cloudSyncing = false;
+    });
+  }
+
+  function startCloudSync(skipImmediatePull) {
+    stopCloudSync();
+    if (!isCloudEnabled()) {
+      updateSyncStatus('offline', 'Local only');
+      return;
+    }
+    if (!skipImmediatePull) pullFromCloud(true);
+    cloudSyncTimer = setInterval(function () { pullFromCloud(true); }, 4000);
+  }
+
+  function stopCloudSync() {
+    if (cloudSyncTimer) clearInterval(cloudSyncTimer);
+    cloudSyncTimer = null;
+  }
+
+  function saveCloudSettings() {
+    var urlIn = $('cloud-db-url');
+    var nameIn = $('cloud-member-name');
+    var syncIn = $('cloud-sync-enabled');
+    if (!state.settings) state.settings = {};
+    state.settings.cloudDbUrl = urlIn ? urlIn.value.trim() : '';
+    state.settings.memberName = nameIn ? nameIn.value.trim() : '';
+    state.settings.cloudSync = syncIn ? syncIn.checked : false;
+    saveToStorage({ pushCloud: hasMeaningfulData() });
+    if (state.settings.cloudSync && state.settings.cloudDbUrl) {
+      startCloudSync();
+      pullFromCloud(false).then(function (remote) {
+        var hasRemote = remote && remote.clients && remote.clients.length;
+        if (!hasRemote && state.clients.length) {
+          if (confirm('Cloud is empty. Upload your local clients & tasks so the team can see them?')) {
+            pushToCloud().then(function () { showToast('Uploaded to team cloud'); });
+          }
+        } else {
+          showToast('Team sync connected');
+        }
+      });
+    } else {
+      stopCloudSync();
+      updateSyncStatus('offline', 'Local only');
+      showToast('Team sync off — local only');
+    }
+    renderSettings();
+  }
+
+  function uploadLocalToCloud() {
+    if (!getCloudDbUrl()) { alert('Enter database URL first'); return; }
+    if (!confirm('Upload your current data to the team cloud? This overwrites cloud data.')) return;
+    state.settings.cloudSync = true;
+    pushToCloud().then(function (ok) {
+      if (ok) {
+        startCloudSync(true);
+        showToast('Team cloud updated');
+      } else {
+        alert('Upload failed. Check URL and Firebase rules (see TEAM-SYNC-SETUP.md).');
+      }
+    });
+  }
+
+  function ensureClientShape(c) {
+    if (!c.links) {
+      c.links = [];
+      if (c.dropboxLink) c.links.push({ id: uid(), type: 'dropbox', label: 'Dropbox', url: c.dropboxLink });
+      if (c.googleDriveLink) c.links.push({ id: uid(), type: 'drive', label: 'Google Drive', url: c.googleDriveLink });
+      if (c.customLinks && c.customLinks.length) {
+        c.customLinks.forEach(function (l) {
+          if (typeof l === 'string') {
+            c.links.push({ id: uid(), type: 'pdf', label: 'Link', url: l });
+          } else if (l && l.url) {
+            c.links.push({ id: l.id || uid(), type: l.type || 'pdf', label: l.label || 'Link', url: l.url });
+          }
+        });
+      }
+    }
+  }
+
+  function loadFromStorage() {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      tryRestoreFromBackup(false);
+      return;
+    }
+    try {
+      state = normalizeState(JSON.parse(raw));
+    } catch (e) {
+      state = { clients: [], tasks: [], alertsDismissed: {}, settings: {}, remindersShown: {} };
+      tryRestoreFromBackup(true);
+    }
+    if (!state.clients.length) tryRestoreFromBackup(false);
+  }
+
+  function getBackupState() {
+    var raw = localStorage.getItem(STORAGE_BACKUP_KEY);
+    if (!raw) return null;
+    try {
+      var b = JSON.parse(raw);
+      if (b.clients && b.clients.length) return normalizeState(b);
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  function tryRestoreFromBackup(silent) {
+    var backup = getBackupState();
+    if (!backup) return false;
+    if (!silent && !confirm('No clients in current save.\n\nRestore ' + backup.clients.length + ' client(s) from automatic backup?')) {
+      return false;
+    }
+    state = backup;
+    saveToStorage({ forceCloudPush: hasMeaningfulData() });
+    return true;
+  }
+
+  function restoreFromBackup() {
+    var backup = getBackupState();
+    if (!backup) {
+      alert('No automatic backup for this file location.\n\nAlways open the same TEAM-kreatify.html path, or use Export backup.');
+      return;
+    }
+    if (!confirm('Restore ' + backup.clients.length + ' client(s) and ' + backup.tasks.length + ' task(s)? Current data will be replaced.')) return;
+    state = backup;
+    saveToStorage();
+    populateClientSelects();
+    refreshAll();
+    showToast('Data restored from backup');
+  }
+
+  function importBackupFile() {
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.json,application/json';
+    inp.onchange = function () {
+      var f = inp.files[0];
+      if (!f) return;
+      var r = new FileReader();
+      r.onload = function () {
+        try {
+          var data = JSON.parse(r.result);
+          if (!data.clients || !data.clients.length) {
+            alert('This file has no clients.');
+            return;
+          }
+          if (!confirm('Import ' + data.clients.length + ' client(s)? This replaces current data.')) return;
+          state = normalizeState(data);
+          saveToStorage();
+          populateClientSelects();
+          refreshAll();
+          showToast('Backup imported');
+        } catch (err) {
+          alert('Invalid backup file: ' + err.message);
+        }
+      };
+      r.readAsText(f);
+    };
+    inp.click();
+  }
+
+  function getClient(id) {
+    for (var i = 0; i < state.clients.length; i++) {
+      if (state.clients[i].id === id) return state.clients[i];
+    }
+    return null;
+  }
+
+  function getTask(id) {
+    for (var i = 0; i < state.tasks.length; i++) {
+      if (state.tasks[i].id === id) return state.tasks[i];
+    }
+    return null;
+  }
+
+  function getClientName(c) {
+    return c && c.name ? c.name.trim() : 'Client';
+  }
+
+  function getTasksOnDate(dateStr) {
+    return state.tasks.filter(function (t) { return t.dueDate === dateStr; })
+      .sort(function (a, b) { return parseDate(a.dueDate) - parseDate(b.dueDate); });
+  }
+
+  function taskAssigneeColor(t) {
+    var p = (t.assignedTo && t.assignedTo[0]) || null;
+    return p && TEAM[p] ? TEAM[p].color : '#94a3b8';
+  }
+
+  function doneCheckHtml() {
+    return '<span class="task-done-check" title="Done">✓</span>';
+  }
+
+  function showToast(msg) {
+    var t = $('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function () { t.classList.remove('show'); }, 3500);
+  }
+
+  function openModal(id) {
+    var el = $(id);
+    if (el) { el.hidden = false; el.classList.add('open'); }
+  }
+
+  function closeModal(id) {
+    var el = $(id);
+    if (el) { el.hidden = true; el.classList.remove('open'); }
+  }
+
+  function closeAllModals() {
+    document.querySelectorAll('.overlay').forEach(function (el) {
+      if (el.id === 'modal-notify' || el.id === 'modal-delete-confirm') return;
+      el.hidden = true;
+      el.classList.remove('open');
+    });
+    var po = $('panel-overlay');
+    var sp = $('slide-panel');
+    if (po) { po.hidden = true; }
+    if (sp) { sp.hidden = true; }
+  }
+
+  function taskNotifyHtml(task) {
+    var c = getClient(task.clientId);
+    return '<p><strong>' + esc(task.title) + '</strong></p>' +
+      '<p>Client: ' + esc(c ? getClientName(c) : '—') + '</p>' +
+      '<p>Due: ' + formatDate(task.dueDate) + '</p>' +
+      '<p>Assigned: ' + esc((task.assignedTo || []).join(', ')) + '</p>' +
+      '<p>Category: ' + esc(task.category) + ' · Priority: ' + esc(task.priority) + '</p>' +
+      (task.notes ? '<p>Notes: ' + esc(task.notes) + '</p>' : '');
+  }
+
+  function browserNotify(title, body) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      new Notification(title, { body: body, icon: 'https://kreatify.mx/wp-content/uploads/2025/05/Kreatify-Logo-2025.png' });
+    } catch (e) { /* ignore */ }
+  }
+
+  function showNextNotify() {
+    if (!notifyQueue.length) return;
+    var item = notifyQueue[0];
+    notifyTaskId = item.taskId || null;
+    var badge = $('notify-badge');
+    var titleEl = $('notify-title');
+    var bodyEl = $('notify-body');
+    if (badge) {
+      badge.textContent = item.badge || 'Notification';
+      badge.hidden = !item.badge;
+    }
+    if (titleEl) titleEl.textContent = item.title;
+    if (bodyEl) bodyEl.innerHTML = item.html;
+    openModal('modal-notify');
+    browserNotify(item.title, item.plain || '');
+  }
+
+  function enqueueNotify(item) {
+    notifyQueue.push(item);
+    if (notifyQueue.length === 1) showNextNotify();
+  }
+
+  function closeNotify() {
+    closeModal('modal-notify');
+    notifyQueue.shift();
+    notifyTaskId = null;
+    if (notifyQueue.length) setTimeout(showNextNotify, 400);
+  }
+
+  function openTaskFromNotify() {
+    if (notifyTaskId) editTask(notifyTaskId);
+    closeNotify();
+  }
+
+  function handleNewTaskNotifications(task) {
+    var assigned = task.assignedTo || [];
+    var html = taskNotifyHtml(task);
+    var plain = task.title + ' — due ' + formatDate(task.dueDate);
+
+    if (assigned.indexOf('Samuel') >= 0) {
+      enqueueNotify({
+        title: 'New task for Samuel',
+        html: html,
+        plain: plain,
+        badge: 'New task',
+        taskId: task.id
+      });
+    }
+    if (assigned.indexOf('Alin') >= 0 || assigned.indexOf('Aline') >= 0) {
+      enqueueNotify({
+        title: 'New task for Alin — team alert',
+        html: '<p><em>Visible to everyone on this device.</em></p>' + html,
+        plain: 'Team: ' + plain,
+        badge: 'Team alert',
+        taskId: task.id
+      });
+    }
+    assigned.forEach(function (p) {
+      if (p === 'Samuel' || p === 'Alin' || p === 'Aline') return;
+      enqueueNotify({
+        title: 'New task for ' + p,
+        html: html,
+        plain: plain,
+        badge: 'New task',
+        taskId: task.id
+      });
+    });
+  }
+
+  function reminderAlreadyShown(taskId, dateStr, slot) {
+    var rec = state.remindersShown[taskId];
+    if (!rec || rec.date !== dateStr) return false;
+    return rec.slots && rec.slots.indexOf(slot) >= 0;
+  }
+
+  function markReminderShown(taskId, dateStr, slot) {
+    if (!state.remindersShown[taskId] || state.remindersShown[taskId].date !== dateStr) {
+      state.remindersShown[taskId] = { date: dateStr, slots: [] };
+    }
+    if (state.remindersShown[taskId].slots.indexOf(slot) < 0) {
+      state.remindersShown[taskId].slots.push(slot);
+    }
+    saveToStorage();
+  }
+
+  function clearRemindersForTask(taskId) {
+    delete state.remindersShown[taskId];
+    saveToStorage();
+  }
+
+  function checkReminders() {
+    var slot = getReminderSlot();
+    if (slot < 0) return;
+    var dk = todayKey();
+    state.tasks.forEach(function (task) {
+      if (task.status === 'done') return;
+      var days = daysUntilDue(task.dueDate);
+      if (days < 0 || days > REMINDER_DAYS_BEFORE) return;
+      if (reminderAlreadyShown(task.id, dk, slot)) return;
+      markReminderShown(task.id, dk, slot);
+      var daysText = days === 0 ? 'due today' : ('due in ' + days + ' day' + (days === 1 ? '' : 's'));
+      enqueueNotify({
+        title: 'Reminder: ' + daysText,
+        html: '<p><strong>Please complete this task.</strong></p>' + taskNotifyHtml(task),
+        plain: task.title + ' — ' + daysText,
+        badge: 'Reminder (' + (slot === 0 ? 'morning' : 'afternoon') + ')',
+        taskId: task.id
+      });
+    });
+  }
+
+  function requestNotificationPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+
+  function renderClientLinksPanel(c) {
+    var html = '';
+    if (c.instagramUrl) {
+      html += '<p><strong>Instagram:</strong> <a href="' + esc(c.instagramUrl) + '" target="_blank" rel="noopener">' + esc(c.instagramUrl) + '</a></p>';
+    }
+    var links = c.links || [];
+    if (!links.length && !html) return '<p class="muted">No links yet. Edit client to add links.</p>';
+    if (!links.length) return html;
+    return html + '<div class="client-links">' + links.map(function (l) {
+      var label = (l.label || LINK_TYPES[l.type] || 'Link').trim();
+      var url = (l.url || '').trim();
+      if (!url) return '';
+      return '<a href="' + esc(url) + '" target="_blank" rel="noopener">📎 ' + esc(LINK_TYPES[l.type] || l.type) + ': ' + esc(label) + '</a>';
+    }).join('') + '</div>';
+  }
+
+  function renderClientLinksEditor() {
+    renderLinksEditor('cl-links-editor', clientLinksDraft);
+  }
+
+  function addClientLinkRow() {
+    addLinkRow('cl-links-editor');
+  }
+
+  function collectLinksFromDraft(draft) {
+    return (draft || clientLinksDraft)
+      .map(function (l) {
+        return {
+          id: l.id || uid(),
+          type: l.type || 'dropbox',
+          label: (l.label || '').trim() || LINK_TYPES[l.type] || 'Link',
+          url: (l.url || '').trim()
+        };
+      })
+      .filter(function (l) { return l.url; });
+  }
+
+  function renderLinksEditor(boxId, draft, removeFn) {
+    var box = $(boxId);
+    if (!box) return;
+    if (!draft.length) {
+      box.innerHTML = '<p class="muted" style="font-size:12px;margin-bottom:8px">No links yet.</p>';
+      return;
+    }
+    box.innerHTML = draft.map(function (l, i) {
+      return '<div class="link-row" data-idx="' + i + '">' +
+        '<select onchange="TK.updateLinkDraft(\'' + boxId + '\',' + i + ',\'type\',this.value)">' +
+        '<option value="dropbox"' + (l.type === 'dropbox' ? ' selected' : '') + '>Dropbox</option>' +
+        '<option value="drive"' + (l.type === 'drive' ? ' selected' : '') + '>Drive</option>' +
+        '<option value="pdf"' + (l.type === 'pdf' ? ' selected' : '') + '>PDF</option>' +
+        '<option value="other"' + (l.type === 'other' ? ' selected' : '') + '>Other</option>' +
+        '</select>' +
+        '<input type="text" placeholder="Label" value="' + esc(l.label || '') + '" onchange="TK.updateLinkDraft(\'' + boxId + '\',' + i + ',\'label\',this.value)">' +
+        '<input type="url" placeholder="https://..." value="' + esc(l.url || '') + '" onchange="TK.updateLinkDraft(\'' + boxId + '\',' + i + ',\'url\',this.value)">' +
+        '<button type="button" class="btn btn-outline btn-sm" onclick="TK.removeLinkDraft(\'' + boxId + '\',' + i + ')">×</button></div>';
+    }).join('');
+  }
+
+  function getLinkDraft(boxId) {
+    return boxId === 'tk-links-editor' ? taskLinksDraft : clientLinksDraft;
+  }
+
+  function addLinkRow(boxId) {
+    var draft = getLinkDraft(boxId);
+    draft.push({ id: uid(), type: 'dropbox', label: '', url: '' });
+    renderLinksEditor(boxId, draft);
+  }
+
+  function removeLinkDraft(boxId, idx) {
+    getLinkDraft(boxId).splice(idx, 1);
+    renderLinksEditor(boxId, getLinkDraft(boxId));
+  }
+
+  function updateLinkDraft(boxId, idx, field, value) {
+    var draft = getLinkDraft(boxId);
+    if (!draft[idx]) return;
+    draft[idx][field] = value;
+  }
+
+  function renderTaskImagesPreview() {
+    var box = $('tk-images-preview');
+    if (!box) return;
+    if (!taskImagesDraft.length) {
+      box.innerHTML = '';
+      return;
+    }
+    box.innerHTML = taskImagesDraft.map(function (img, i) {
+      return '<div class="task-image-thumb">' +
+        '<img src="' + img.dataUrl + '" alt="">' +
+        '<button type="button" class="btn btn-outline btn-sm" onclick="TK.removeTaskImage(' + i + ')">×</button></div>';
+    }).join('');
+  }
+
+  function pickTaskImages() {
+    if (taskImagesDraft.length >= MAX_TASK_IMAGES) {
+      alert('Maximum ' + MAX_TASK_IMAGES + ' photos per task');
+      return;
+    }
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/*';
+    inp.multiple = true;
+    inp.onchange = function () {
+      Array.prototype.forEach.call(inp.files || [], function (file) {
+        if (taskImagesDraft.length >= MAX_TASK_IMAGES) return;
+        if (file.size > MAX_IMAGE_BYTES) {
+          alert(file.name + ' is too large (max ~450 KB). Use a smaller image or a link instead.');
+          return;
+        }
+        var r = new FileReader();
+        r.onload = function () {
+          taskImagesDraft.push({ id: uid(), name: file.name, dataUrl: r.result });
+          renderTaskImagesPreview();
+        };
+        r.readAsDataURL(file);
+      });
+    };
+    inp.click();
+  }
+
+  function removeTaskImage(idx) {
+    taskImagesDraft.splice(idx, 1);
+    renderTaskImagesPreview();
+  }
+
+  function setView(view) {
+    currentView = view;
+    document.querySelectorAll('.sidebar-btn[data-view]').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-view') === view);
+    });
+    ['clients', 'tasks', 'calendar', 'shooting', 'team', 'teamcal', 'settings'].forEach(function (v) {
+      var el = $('view-' + v);
+      if (el) el.classList.toggle('active', v === view);
+    });
+    if (view === 'clients') renderClients();
+    if (view === 'tasks') renderTasks();
+    if (view === 'calendar') renderCalendar();
+    if (view === 'shooting') renderShootingCalendar();
+    if (view === 'team') renderTeamView();
+    if (view === 'teamcal') renderTeamCalView();
+    if (view === 'settings') renderSettings();
+  }
+
+  function refreshAll() {
+    setView(currentView);
+  }
+
+  function avatarHtml(name, size) {
+    var key = name === 'Aline' ? 'Alin' : name;
+    var t = TEAM[key];
+    if (!t) return '';
+    return '<span class="avatar-chip' + (size === 'sm' ? ' sm' : '') + '" style="background:' + t.color + '">' + t.initial + '</span>';
+  }
+
+  function teamChipsHtml(names) {
+    return (names || []).map(function (n) { return avatarHtml(n, 'sm'); }).join('');
+  }
+
+  function buildTeamCheckboxes(containerId, selected) {
+    var box = $(containerId);
+    if (!box) return;
+    box.innerHTML = TEAM_NAMES.map(function (n) {
+      var ck = (selected || []).indexOf(n) >= 0 ? ' checked' : '';
+      return '<label><input type="checkbox" name="team" value="' + n + '"' + ck + '> ' + n + '</label>';
+    }).join('');
+  }
+
+  function getSelectedTeam(containerId) {
+    var box = $(containerId);
+    if (!box) return [];
+    return Array.prototype.map.call(box.querySelectorAll('input[name="team"]:checked'), function (i) {
+      return i.value;
+    });
+  }
+
+  function populateClientSelects() {
+    var opts = state.clients.map(function (c) {
+      return '<option value="' + c.id + '">' + esc(getClientName(c)) + '</option>';
+    }).join('');
+    var tk = $('tk-client');
+    if (tk) tk.innerHTML = '<option value="">— Select client —</option>' + opts;
+    var fc = $('tf-client');
+    if (fc) fc.innerHTML = '<option value="">All clients</option>' + opts;
+  }
+
+  function renderClients() {
+    var list = $('clients-list');
+    if (!list) return;
+    var clients = state.clients.slice();
+    if (clientStatusFilter !== 'all') {
+      clients = clients.filter(function (c) { return c.status === clientStatusFilter; });
+    }
+    if (globalTeamFilter) {
+      clients = clients.filter(function (c) {
+        return (c.team || []).indexOf(globalTeamFilter) >= 0;
+      });
+    }
+    clients.sort(function (a, b) { return getClientName(a).localeCompare(getClientName(b)); });
+    if (!clients.length) {
+      list.innerHTML = '<div class="empty-state">No clients yet. Click “+ New Client”.</div>';
+      return;
+    }
+    list.innerHTML = clients.map(function (c) {
+      var linkCount = (c.links || []).length;
+      return '<div class="kunden-card" data-cid="' + c.id + '" onclick="TK.openClient(\'' + c.id + '\')">' +
+        '<div><div class="kunden-name">' + esc(getClientName(c)) + '</div>' +
+        '<div class="kunden-meta">' +
+        '<span class="badge">' + esc(STATUS_LABELS[c.status] || c.status) + '</span>' +
+        (linkCount ? '<span>' + linkCount + ' link' + (linkCount === 1 ? '' : 's') + '</span>' : '') +
+        (c.instagramUrl ? '<span>Instagram</span>' : '') +
+        (c.contractStart ? '<span>Start ' + formatDate(c.contractStart) + '</span>' : '') +
+        '</div></div></div>';
+    }).join('');
+  }
+
+  function openClient(id) {
+    selectedClientId = id;
+    var c = getClient(id);
+    if (!c) return;
+    ensureClientShape(c);
+    var sp = $('slide-panel');
+    var po = $('panel-overlay');
+    sp.innerHTML = '<div class="panel-header"><h2>' + esc(getClientName(c)) + '</h2>' +
+      '<button type="button" class="panel-close" onclick="TK.closePanel()">×</button></div>' +
+      '<p><strong>Contract start:</strong> ' + (c.contractStart ? formatDate(c.contractStart) : '—') + '</p>' +
+      renderClientLinksPanel(c) +
+      '<div class="panel-actions">' +
+      '<button type="button" class="btn btn-primary" onclick="TK.editClient(\'' + c.id + '\')">Edit</button>' +
+      '<button type="button" class="btn btn-danger" onclick="TK.deleteClient(\'' + c.id + '\')">Delete</button>' +
+      '</div>';
+    po.hidden = false;
+    sp.hidden = false;
+  }
+
+  function closePanel() {
+    var po = $('panel-overlay');
+    var sp = $('slide-panel');
+    if (po) po.hidden = true;
+    if (sp) sp.hidden = true;
+    selectedClientId = null;
+  }
+
+  function openClientModal(client) {
+    $('modal-client-title').textContent = client ? 'Edit client' : 'New client';
+    $('client-id').value = client ? client.id : '';
+    $('cl-name').value = client ? client.name : '';
+    $('cl-contract-start').value = client && client.contractStart ? client.contractStart : '';
+    $('cl-status').value = client ? client.status : 'active';
+    $('cl-billing').value = client ? client.billingType : 'monthly';
+    $('cl-posts').value = client && client.postsPerWeek != null ? client.postsPerWeek : '';
+    $('cl-stories').value = client && client.storiesPerWeek != null ? client.storiesPerWeek : '';
+    var ig = $('cl-instagram');
+    if (ig) ig.value = client && client.instagramUrl ? client.instagramUrl : '';
+    buildTeamCheckboxes('cl-team-boxes', client ? client.team : []);
+    clientLinksDraft = client && client.links
+      ? client.links.map(function (l) { return Object.assign({}, l); })
+      : [];
+    renderClientLinksEditor();
+    var delBtn = $('btn-delete-client');
+    if (delBtn) delBtn.hidden = !client;
+    openModal('modal-client');
+  }
+
+  function editClient(id) {
+    closePanel();
+    openClientModal(id ? getClient(id) : null);
+  }
+
+  function deleteClient(id) {
+    var cid = id || $('client-id').value || selectedClientId;
+    var c = getClient(cid);
+    if (!c) return;
+    pendingDeleteClientId = cid;
+    var nameEl = $('delete-client-name');
+    var codeEl = $('delete-confirm-code');
+    var errEl = $('delete-code-error');
+    if (nameEl) nameEl.textContent = 'Client: ' + getClientName(c) + ' — all related tasks will be removed.';
+    if (codeEl) { codeEl.value = ''; codeEl.focus(); }
+    if (errEl) errEl.style.display = 'none';
+    openModal('modal-delete-confirm');
+  }
+
+  function cancelDeleteClient() {
+    pendingDeleteClientId = null;
+    closeModal('modal-delete-confirm');
+  }
+
+  function confirmDeleteClient() {
+    var codeEl = $('delete-confirm-code');
+    var errEl = $('delete-code-error');
+    var code = codeEl ? String(codeEl.value).trim() : '';
+    if (code !== DELETE_CLIENT_CODE) {
+      if (errEl) errEl.style.display = 'block';
+      if (codeEl) { codeEl.value = ''; codeEl.focus(); }
+      return;
+    }
+    var cid = pendingDeleteClientId;
+    if (!cid) { cancelDeleteClient(); return; }
+    state.clients = state.clients.filter(function (x) { return x.id !== cid; });
+    state.tasks = state.tasks.filter(function (t) { return t.clientId !== cid; });
+    pendingDeleteClientId = null;
+    saveToStorage();
+    closePanel();
+    closeModal('modal-client');
+    closeModal('modal-delete-confirm');
+    populateClientSelects();
+    refreshAll();
+    showToast('Client deleted');
+  }
+
+  function saveClientForm(e) {
+    e.preventDefault();
+    var id = $('client-id').value;
+    var payload = {
+      name: $('cl-name').value.trim(),
+      contractStart: $('cl-contract-start').value || null,
+      status: $('cl-status').value,
+      billingType: $('cl-billing').value,
+      postsPerWeek: $('cl-posts').value ? +$('cl-posts').value : null,
+      storiesPerWeek: $('cl-stories').value ? +$('cl-stories').value : null,
+      gridDueDay: null,
+      shootingDates: {},
+      links: collectLinksFromDraft(clientLinksDraft),
+      instagramUrl: ($('cl-instagram') && $('cl-instagram').value.trim()) || null,
+      team: getSelectedTeam('cl-team-boxes'),
+      notes: ''
+    };
+    if (!payload.name) { alert('Please enter a client name'); return; }
+    if (id) {
+      Object.assign(getClient(id), payload);
+    } else {
+      state.clients.push(Object.assign({ id: uid() }, payload));
+    }
+    saveToStorage();
+    closeModal('modal-client');
+    populateClientSelects();
+    refreshAll();
+    showToast('Client saved');
+  }
+
+  function teamTaskCellHtml(t) {
+    ensureTaskShape(t);
+    var c = getClient(t.clientId);
+    var done = t.status === 'done';
+    return '<div class="team-cell-task' + (done ? ' done' : '') + '" onclick="TK.editTask(\'' + t.id + '\')">' +
+      taskUrgencyBarHtml(t, true) +
+      '<strong>' + esc(t.title) + (done ? doneCheckHtml() : '') + '</strong>' +
+      '<small>' + esc(c ? getClientName(c) : '') + '</small></div>';
+  }
+
+  function renderTaskCardHtml(t) {
+    ensureTaskShape(t);
+    var c = getClient(t.clientId);
+    var done = t.status === 'done';
+    return '<div class="task-card' + (done ? ' done' : '') + '" onclick="TK.editTask(\'' + t.id + '\')">' +
+      taskUrgencyBarHtml(t, false) +
+      '<div class="task-title">' + esc(t.title) + (done ? doneCheckHtml() : '') + '</div>' +
+      '<div class="kunden-meta">' + esc(c ? getClientName(c) : '?') + ' · ' + formatDate(t.dueDate) + ' · ' + esc(TASK_STATUS[t.status]) + '</div>' +
+      teamChipsHtml(t.assignedTo) + '</div>';
+  }
+
+  function renderTasks() {
+    populateClientSelects();
+    var list = $('tasks-list');
+    if (!list) return;
+    var tasks = state.tasks.slice();
+    var fc = $('tf-client');
+    var fp = $('tf-person');
+    var fs = $('tf-status');
+    if (fc && fc.value) tasks = tasks.filter(function (t) { return t.clientId === fc.value; });
+    if (fp && fp.value) tasks = tasks.filter(function (t) { return (t.assignedTo || []).indexOf(fp.value) >= 0; });
+    if (fs && fs.value) tasks = tasks.filter(function (t) { return t.status === fs.value; });
+    tasks.sort(function (a, b) { return parseDate(a.dueDate) - parseDate(b.dueDate); });
+    if (!tasks.length) {
+      list.innerHTML = '<div class="empty-state">No tasks yet. Click “+ New Task”.</div>';
+      return;
+    }
+    list.innerHTML = tasks.map(renderTaskCardHtml).join('');
+  }
+
+  function openTaskModal(task, preClientId, preDate) {
+    populateClientSelects();
+    $('modal-task-title').textContent = task ? 'Edit task' : 'New task';
+    $('task-id').value = task ? task.id : '';
+    $('tk-title').value = task ? task.title : '';
+    $('tk-client').value = task ? task.clientId : (preClientId || '');
+    buildTeamCheckboxes('tk-team-boxes', task ? task.assignedTo : (teamViewFilter ? [teamViewFilter] : []));
+    $('tk-due').value = task ? task.dueDate : (preDate || calDayPick || fmtDate(new Date()));
+    $('tk-category').value = task ? task.category : 'Content';
+    $('tk-priority').value = task ? task.priority : 'medium';
+    $('tk-status').value = task ? task.status : 'todo';
+    $('tk-notes').value = task ? (task.notes || '') : '';
+    taskLinksDraft = task && task.links ? task.links.map(function (l) { return Object.assign({}, l); }) : [];
+    taskImagesDraft = task && task.images ? task.images.map(function (im) { return Object.assign({}, im); }) : [];
+    renderLinksEditor('tk-links-editor', taskLinksDraft);
+    renderTaskImagesPreview();
+    openModal('modal-task');
+  }
+
+  function editTask(id) {
+    for (var i = 0; i < state.tasks.length; i++) {
+      if (state.tasks[i].id === id) { openTaskModal(state.tasks[i]); return; }
+    }
+  }
+
+  function saveTaskForm(e) {
+    e.preventDefault();
+    if (!$('tk-client').value) { alert('Please select a client'); return; }
+    if (!$('tk-title').value.trim()) { alert('Please enter a title'); return; }
+    if (!$('tk-due').value) { alert('Please choose a due date'); return; }
+    var assigned = getSelectedTeam('tk-team-boxes');
+    if (!assigned.length) { alert('Please assign at least one team member'); return; }
+
+    var id = $('task-id').value;
+    var wasDone = id ? (getTask(id) && getTask(id).status === 'done') : false;
+    var payload = {
+      clientId: $('tk-client').value,
+      title: $('tk-title').value.trim(),
+      assignedTo: assigned,
+      dueDate: $('tk-due').value,
+      category: $('tk-category').value,
+      priority: $('tk-priority').value,
+      status: $('tk-status').value,
+      notes: $('tk-notes').value.trim(),
+      links: collectLinksFromDraft(taskLinksDraft),
+      images: taskImagesDraft.map(function (im) {
+        return { id: im.id || uid(), name: im.name || 'photo', dataUrl: im.dataUrl };
+      })
+    };
+    var isNew = !id;
+    var savedTask;
+    if (id) {
+      for (var i = 0; i < state.tasks.length; i++) {
+        if (state.tasks[i].id === id) {
+          Object.assign(state.tasks[i], payload);
+          savedTask = state.tasks[i];
+          break;
+        }
+      }
+    } else {
+      savedTask = Object.assign({ id: uid(), createdAt: fmtDate(new Date()) }, payload);
+      state.tasks.push(savedTask);
+    }
+    ensureTaskShape(savedTask);
+    if (savedTask && savedTask.status === 'done') {
+      clearRemindersForTask(savedTask.id);
+    } else if (savedTask && wasDone && savedTask.status !== 'done') {
+      clearRemindersForTask(savedTask.id);
+    }
+    calCursor = parseDate(payload.dueDate);
+    teamWeekStart = getMonday(calCursor);
+
+    saveToStorage();
+    closeModal('modal-task');
+    calDayPick = null;
+    refreshAll();
+    var msg = 'Task saved — on calendar ' + formatDate(payload.dueDate);
+    if (payload.category === 'Shooting') msg += ' · also on Shooting calendar';
+    showToast(msg);
+    if (isNew && savedTask) {
+      setTimeout(function () { handleNewTaskNotifications(savedTask); }, 500);
+    }
+  }
+
+  function calTaskPillHtml(t) {
+    ensureTaskShape(t);
+    var names = (t.assignedTo || []).join(', ');
+    var done = t.status === 'done';
+    return '<div class="cal-task-pill' + (done ? ' done' : '') + '" style="border-left:3px solid ' + taskAssigneeColor(t) + '" ' +
+      'onclick="event.stopPropagation();TK.editTask(\'' + t.id + '\')" title="' + esc(names) + '">' +
+      taskUrgencyBarHtml(t, true) + esc(t.title) + (done ? ' ✓' : '') + '</div>';
+  }
+
+  function renderCalendar() {
+    var y = calCursor.getFullYear();
+    var m = calCursor.getMonth();
+    $('cal-title').textContent = MONTH_NAMES[m] + ' ' + y;
+    var first = new Date(y, m, 1);
+    var startPad = first.getDay();
+    var dim = daysInMonth(y, m);
+    var todayStr = fmtDate(new Date());
+    var html = WEEKDAYS.map(function (w) { return '<div class="cal-head">' + w + '</div>'; }).join('');
+    var total = Math.ceil((startPad + dim) / 7) * 7;
+    for (var i = 0; i < total; i++) {
+      var dayNum = i - startPad + 1;
+      if (i < startPad || dayNum > dim) {
+        html += '<div class="cal-day other-month"></div>';
+        continue;
+      }
+      var dateStr = fmtDate(new Date(y, m, dayNum));
+      var dayTasks = getTasksOnDate(dateStr);
+      var pills = dayTasks.map(calTaskPillHtml).join('');
+      html += '<div class="cal-day' + (dateStr === todayStr ? ' today' : '') + '" onclick="TK.openCalDay(\'' + dateStr + '\')">' +
+        '<div class="cal-day-num">' + dayNum + '</div><div class="cal-day-tasks">' + pills + '</div></div>';
+    }
+    $('cal-grid').innerHTML = html;
+  }
+
+  function shootingPillHtml(t) {
+    var c = getClient(t.clientId);
+    return '<div class="cal-task-pill shooting-pill" onclick="event.stopPropagation();TK.editTask(\'' + t.id + '\')">' +
+      esc(t.title) + (c ? ' · ' + esc(getClientName(c)) : '') + '</div>';
+  }
+
+  function renderMonthGrid(cursor, titleElId, gridElId, getItems, pillBuilder, dayClickFn) {
+    var y = cursor.getFullYear();
+    var m = cursor.getMonth();
+    var titleEl = $(titleElId);
+    var gridEl = $(gridElId);
+    if (titleEl) titleEl.textContent = MONTH_NAMES[m] + ' ' + y;
+    if (!gridEl) return;
+    var first = new Date(y, m, 1);
+    var startPad = first.getDay();
+    var dim = daysInMonth(y, m);
+    var todayStr = fmtDate(new Date());
+    var html = WEEKDAYS.map(function (w) { return '<div class="cal-head">' + w + '</div>'; }).join('');
+    var total = Math.ceil((startPad + dim) / 7) * 7;
+    for (var i = 0; i < total; i++) {
+      var dayNum = i - startPad + 1;
+      if (i < startPad || dayNum > dim) {
+        html += '<div class="cal-day other-month"></div>';
+        continue;
+      }
+      var dateStr = fmtDate(new Date(y, m, dayNum));
+      var items = getItems(dateStr, y, m, dayNum);
+      var pills = items.map(pillBuilder).join('');
+      var click = dayClickFn ? ' onclick="' + dayClickFn + '(\'' + dateStr + '\')"' : '';
+      html += '<div class="cal-day' + (dateStr === todayStr ? ' today' : '') + '"' + click + '>' +
+        '<div class="cal-day-num">' + dayNum + '</div><div class="cal-day-tasks">' + pills + '</div></div>';
+    }
+    gridEl.innerHTML = html;
+  }
+
+  function getShootingOnDate(dateStr) {
+    return state.tasks.filter(function (t) {
+      return t.dueDate === dateStr && String(t.category) === 'Shooting';
+    });
+  }
+
+  function renderShootingCalendar() {
+    renderMonthGrid(
+      shootingCalCursor,
+      'shooting-cal-title',
+      'shooting-cal-grid',
+      function (dateStr) { return getShootingOnDate(dateStr); },
+      function (t) { return shootingPillHtml(t); },
+      'TK.openShootingDay'
+    );
+  }
+
+  function openShootingDay(dateStr) {
+    calDayPick = dateStr;
+    $('cal-day-title').textContent = 'Shooting — ' + formatDateLong(dateStr);
+    var box = $('cal-day-tasks');
+    var tasks = getShootingOnDate(dateStr);
+    if (box) {
+      box.innerHTML = tasks.length
+        ? tasks.map(function (t) {
+            var c = getClient(t.clientId);
+            return '<div class="cal-day-item" onclick="TK.editTask(\'' + t.id + '\')"><strong>' + esc(t.title) + '</strong><br><span class="muted">' + esc(c ? getClientName(c) : '') + '</span></div>';
+          }).join('')
+        : '<p class="muted">No shootings on this day.</p>';
+    }
+    openModal('modal-cal-day');
+  }
+
+  function getBirthdaysOnDay(y, m, dayNum) {
+    return (state.birthdays || []).filter(function (b) {
+      if (!b.date) return false;
+      var d = parseDate(b.date);
+      return d.getMonth() === m && d.getDate() === dayNum;
+    });
+  }
+
+  function birthdayPillHtml(b) {
+    return '<div class="cal-task-pill birthday-pill" onclick="event.stopPropagation();TK.editBirthday(\'' + b.id + '\')">📅 ' + esc(b.name) + '</div>';
+  }
+
+  function renderTeamCalView() {
+    var y = teamCalCursor.getFullYear();
+    var m = teamCalCursor.getMonth();
+    renderMonthGrid(
+      teamCalCursor,
+      'teamcal-title',
+      'teamcal-grid',
+      function (dateStr, year, month, dayNum) { return getBirthdaysOnDay(year, month, dayNum); },
+      function (b) { return birthdayPillHtml(b); },
+      'TK.openBirthdayDay'
+    );
+    var list = $('birthdays-list');
+    if (!list) return;
+    var upcoming = (state.birthdays || []).slice().sort(function (a, b) {
+      return parseDate(a.date) - parseDate(b.date);
+    });
+    if (!upcoming.length) {
+      list.innerHTML = '<p class="muted">No Team Events yet. Click + Add Team Event.</p>';
+      return;
+    }
+    list.innerHTML = '<ul class="birthday-list">' + upcoming.map(function (b) {
+      return '<li onclick="TK.editBirthday(\'' + b.id + '\')"><strong>' + esc(b.name) + '</strong> — ' + formatDate(b.date) + '</li>';
+    }).join('') + '</ul>';
+  }
+
+  function openBirthdayDay(dateStr) {
+    teamCalDayPick = dateStr;
+    var d = parseDate(dateStr);
+    var items = getBirthdaysOnDay(d.getFullYear(), d.getMonth(), d.getDate());
+    $('cal-day-title').textContent = 'Team Events — ' + formatDateLong(dateStr);
+    var box = $('cal-day-tasks');
+    if (box) {
+      box.innerHTML = items.length
+        ? items.map(function (b) {
+            return '<div class="cal-day-item" onclick="TK.editBirthday(\'' + b.id + '\')"><strong>📅 ' + esc(b.name) + '</strong></div>';
+          }).join('')
+        : '<p class="muted">No Team Events on this day.</p>';
+    }
+    openModal('modal-cal-day');
+  }
+
+  function openBirthdayModal(b) {
+    $('modal-birthday-title').textContent = b ? 'Edit Team Event' : 'Add Team Event';
+    $('birthday-id').value = b ? b.id : '';
+    $('bd-name').value = b ? b.name : '';
+    $('bd-date').value = b ? b.date : '';
+    $('bd-notes').value = b ? (b.notes || '') : '';
+    var delBtn = $('btn-delete-birthday');
+    if (delBtn) delBtn.hidden = !b;
+    openModal('modal-birthday');
+  }
+
+  function editBirthday(id) {
+    for (var i = 0; i < (state.birthdays || []).length; i++) {
+      if (state.birthdays[i].id === id) { openBirthdayModal(state.birthdays[i]); return; }
+    }
+  }
+
+  function saveBirthdayForm(e) {
+    e.preventDefault();
+    var name = $('bd-name').value.trim();
+    var date = $('bd-date').value;
+    if (!name || !date) { alert('Name and date required'); return; }
+    var id = $('birthday-id').value;
+    var payload = { name: name, date: date, notes: $('bd-notes').value.trim() };
+    if (id) {
+      for (var i = 0; i < state.birthdays.length; i++) {
+        if (state.birthdays[i].id === id) { Object.assign(state.birthdays[i], payload); break; }
+      }
+    } else {
+      if (!state.birthdays) state.birthdays = [];
+      state.birthdays.push(Object.assign({ id: uid() }, payload));
+    }
+    saveToStorage();
+    closeModal('modal-birthday');
+    refreshAll();
+    showToast('Team Event saved');
+  }
+
+  function deleteBirthday() {
+    var id = $('birthday-id').value;
+    if (!id || !confirm('Delete this Team Event?')) return;
+    state.birthdays = (state.birthdays || []).filter(function (b) { return b.id !== id; });
+    saveToStorage();
+    closeModal('modal-birthday');
+    refreshAll();
+    showToast('Team Event deleted');
+  }
+
+  function openCalDay(dateStr) {
+    calDayPick = dateStr;
+    $('cal-day-title').textContent = formatDateLong(dateStr);
+    var box = $('cal-day-tasks');
+    var tasks = getTasksOnDate(dateStr);
+    if (box) {
+      box.innerHTML = tasks.length
+        ? tasks.map(function (t) {
+            ensureTaskShape(t);
+            var c = getClient(t.clientId);
+            var done = t.status === 'done';
+            return '<div class="cal-day-item" onclick="TK.editTask(\'' + t.id + '\')">' +
+              taskUrgencyBarHtml(t, false) +
+              teamChipsHtml(t.assignedTo) +
+              '<strong>' + esc(t.title) + (done ? doneCheckHtml() : '') + '</strong><br><span class="muted">' + esc(c ? getClientName(c) : '') + '</span></div>';
+          }).join('')
+        : '<p class="muted">No tasks on this day.</p>';
+    }
+    openModal('modal-cal-day');
+  }
+
+  function renderTeamPersonFilter() {
+    var bar = $('team-person-filter');
+    if (!bar) return;
+    var html = '<button type="button" class="' + (!teamViewFilter ? 'active' : '') + '" onclick="TK.setTeamPerson(null)">All</button>';
+    TEAM_NAMES.forEach(function (n) {
+      var active = teamViewFilter === n ? ' active' : '';
+      html += '<button type="button" class="team-chip' + active + '" style="--chip-color:' + TEAM[n].color + '" onclick="TK.setTeamPerson(\'' + n + '\')">' + n + '</button>';
+    });
+    bar.innerHTML = html;
+  }
+
+  function renderTeamView() {
+    renderTeamPersonFilter();
+    var label = $('team-week-label');
+    var board = $('team-board');
+    if (!board) return;
+
+    var days = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(teamWeekStart);
+      d.setDate(teamWeekStart.getDate() + i);
+      days.push(d);
+    }
+    if (label) {
+      label.textContent = formatDate(fmtDate(days[0])) + ' – ' + formatDate(fmtDate(days[6]));
+    }
+
+    var people = teamViewFilter ? [teamViewFilter] : TEAM_NAMES;
+    var html = '<div class="team-matrix">';
+    html += '<div class="team-matrix-row head"><div class="team-matrix-person">Person</div>';
+    days.forEach(function (d) {
+      html += '<div class="team-matrix-day"><span>' + WEEKDAYS[d.getDay()] + '</span><strong>' + formatDate(fmtDate(d)) + '</strong></div>';
+    });
+    html += '</div>';
+
+    people.forEach(function (person) {
+      html += '<div class="team-matrix-row"><div class="team-matrix-person">' +
+        '<span class="team-person-name" style="color:' + TEAM[person].color + '">' + person + '</span></div>';
+      days.forEach(function (d) {
+        var ds = fmtDate(d);
+        var tasks = state.tasks.filter(function (t) {
+          return t.dueDate === ds && (t.assignedTo || []).indexOf(person) >= 0;
+        });
+        html += '<div class="team-matrix-cell">';
+        if (!tasks.length) {
+          html += '<span class="team-cell-empty">—</span>';
+        } else {
+          tasks.forEach(function (t) {
+            html += teamTaskCellHtml(t);
+          });
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+
+    var upcoming = $('team-upcoming');
+    if (upcoming) {
+      var listPeople = teamViewFilter ? [teamViewFilter] : TEAM_NAMES;
+      var upcomingHtml = '';
+      listPeople.forEach(function (person) {
+        var personTasks = state.tasks.filter(function (t) {
+          return (t.assignedTo || []).indexOf(person) >= 0;
+        }).sort(function (a, b) {
+          if (a.status === 'done' && b.status !== 'done') return 1;
+          if (a.status !== 'done' && b.status === 'done') return -1;
+          return parseDate(a.dueDate) - parseDate(b.dueDate);
+        });
+        if (!personTasks.length) return;
+        upcomingHtml += '<div class="team-upcoming-block"><h3 style="color:' + TEAM[person].color + '">' + person + '</h3><ul>';
+        personTasks.forEach(function (t) {
+          var c = getClient(t.clientId);
+          var done = t.status === 'done';
+          ensureTaskShape(t);
+          upcomingHtml += '<li class="' + (done ? 'upcoming-done' : '') + '" onclick="TK.editTask(\'' + t.id + '\')">' +
+            taskUrgencyBarHtml(t, true) +
+            '<strong>' + formatDate(t.dueDate) + '</strong> — ' + esc(t.title) +
+            (done ? doneCheckHtml() : '') +
+            ' <span class="muted">(' + esc(c ? getClientName(c) : '') + ')</span></li>';
+        });
+        upcomingHtml += '</ul></div>';
+      });
+      upcoming.innerHTML = upcomingHtml || '<p class="muted">No assigned tasks yet.</p>';
+    }
+
+    board.innerHTML = html;
+  }
+
+  function setTeamPerson(name) {
+    teamViewFilter = name;
+    renderTeamView();
+  }
+
+  function teamPrevWeek() {
+    teamWeekStart.setDate(teamWeekStart.getDate() - 7);
+    renderTeamView();
+  }
+
+  function teamNextWeek() {
+    teamWeekStart.setDate(teamWeekStart.getDate() + 7);
+    renderTeamView();
+  }
+
+  function renderSettings() {
+    var backup = getBackupState();
+    var backupInfo = backup
+      ? '<p class="muted">Auto-backup: ' + backup.clients.length + ' client(s), ' + backup.tasks.length + ' task(s)</p>'
+      : '<p class="muted">No local auto-backup yet.</p>';
+    var cloudUrl = getCloudDbUrl();
+    var cloudOn = isCloudEnabled();
+    var memberName = (state.settings && state.settings.memberName) || '';
+    $('settings-form').innerHTML =
+      '<p><strong>Team sync (required for shared data)</strong></p>' +
+      '<p class="muted" style="margin-bottom:12px">So everyone sees the same clients & tasks: connect once to the shared online database. Works in any browser — same data for the whole team.</p>' +
+      '<div class="form-group"><label>Your name</label><input type="text" id="cloud-member-name" value="' + esc(memberName) + '" placeholder="e.g. Samuel"></div>' +
+      '<div class="form-group"><label>Firebase database URL</label>' +
+      '<input type="url" id="cloud-db-url" value="' + esc(cloudUrl) + '" placeholder="https://YOUR-PROJECT-default-rtdb.firebaseio.com" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:12px">' +
+      '<p class="muted" style="margin-top:6px">One-time setup: see <strong>TEAM-SYNC-SETUP.md</strong> in the project folder.</p></div>' +
+      '<label style="font-size:13px;display:block;margin-bottom:12px"><input type="checkbox" id="cloud-sync-enabled"' + (cloudOn ? ' checked' : '') + '> Enable team sync</label>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">' +
+      '<button type="button" class="btn btn-primary" onclick="TK.saveCloudSettings()">Save & connect</button>' +
+      '<button type="button" class="btn btn-outline" onclick="TK.uploadLocalToCloud()">Upload my data to cloud</button>' +
+      '</div>' +
+      '<p><strong>Local backup</strong></p>' + backupInfo +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0">' +
+      '<button type="button" class="btn btn-secondary" onclick="TK.restoreFromBackup()">Restore auto-backup</button>' +
+      '<button type="button" class="btn btn-outline" onclick="TK.importBackupFile()">Import JSON file</button>' +
+      '<button type="button" class="btn btn-outline" onclick="TK.exportBackup()">Export backup</button>' +
+      '</div>' +
+      '<p style="margin-top:20px"><strong>Notifications</strong></p>' +
+      '<p class="muted" style="margin-bottom:12px">Popups when tasks are created and reminders 3 days before due (2× daily until done).</p>' +
+      '<button type="button" class="btn btn-secondary" onclick="TK.requestNotifyPermission()">Enable browser notifications</button>';
+  }
+
+  function exportBackup() {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'team-kreatify-backup.json';
+    a.click();
+  }
+
+  function finishInitUi() {
+    populateClientSelects();
+    buildTeamCheckboxes('cl-team-boxes', []);
+    buildTeamCheckboxes('tk-team-boxes', []);
+    setView('clients');
+    requestNotificationPermission();
+    setTimeout(checkReminders, 2500);
+    setInterval(checkReminders, 60000);
+    if (isCloudEnabled()) {
+      showToast('Team sync — ' + state.clients.length + ' client(s)');
+    } else if (state.clients.length) {
+      updateSyncStatus('offline', 'Local only');
+      showToast('Local data only — enable Team sync in Settings');
+    } else if (getBackupState()) {
+      updateSyncStatus('offline', 'Local only');
+      showToast('Settings → Team sync or Restore backup');
+    } else {
+      updateSyncStatus('offline', 'Local only');
+      showToast('Settings → Team sync to share with your team');
+    }
+  }
+
+  function init() {
+    closeAllModals();
+    var fc = $('form-client');
+    var ft = $('form-task');
+    if (fc) fc.addEventListener('submit', saveClientForm);
+    if (ft) ft.addEventListener('submit', saveTaskForm);
+    var fb = $('form-birthday');
+    if (fb) fb.addEventListener('submit', saveBirthdayForm);
+    loadFromStorage();
+    applyDefaultTeamCloudConfig();
+
+    if (isCloudEnabled()) {
+      updateSyncStatus('syncing', 'Loading team data…');
+      pullFromCloud(true).then(function () {
+        saveToStorage({ pushCloud: hasMeaningfulData() });
+        finishInitUi();
+        startCloudSync(true);
+      }).catch(function () {
+        saveToStorage({ pushCloud: false });
+        finishInitUi();
+        startCloudSync(true);
+      });
+    } else {
+      saveToStorage({ pushCloud: false });
+      finishInitUi();
+    }
+  }
+
+  function calPrev() {
+    calCursor.setMonth(calCursor.getMonth() - 1);
+    if (currentView === 'calendar') renderCalendar();
+  }
+
+  function calNext() {
+    calCursor.setMonth(calCursor.getMonth() + 1);
+    if (currentView === 'calendar') renderCalendar();
+  }
+
+  function shootingCalPrev() {
+    shootingCalCursor.setMonth(shootingCalCursor.getMonth() - 1);
+    if (currentView === 'shooting') renderShootingCalendar();
+  }
+
+  function shootingCalNext() {
+    shootingCalCursor.setMonth(shootingCalCursor.getMonth() + 1);
+    if (currentView === 'shooting') renderShootingCalendar();
+  }
+
+  function teamCalPrev() {
+    teamCalCursor.setMonth(teamCalCursor.getMonth() - 1);
+    if (currentView === 'teamcal') renderTeamCalView();
+  }
+
+  function teamCalNext() {
+    teamCalCursor.setMonth(teamCalCursor.getMonth() + 1);
+    if (currentView === 'teamcal') renderTeamCalView();
+  }
+
+  window.TK = {
+    init: init,
+    nav: setView,
+    closeModal: closeModal,
+    openClient: openClient,
+    closePanel: closePanel,
+    editClient: editClient,
+    deleteClient: deleteClient,
+    cancelDeleteClient: cancelDeleteClient,
+    confirmDeleteClient: confirmDeleteClient,
+    addClientLinkRow: addClientLinkRow,
+    addLinkRow: addLinkRow,
+    removeLinkDraft: removeLinkDraft,
+    updateLinkDraft: updateLinkDraft,
+    pickTaskImages: pickTaskImages,
+    removeTaskImage: removeTaskImage,
+    openShootingDay: openShootingDay,
+    shootingCalPrev: shootingCalPrev,
+    shootingCalNext: shootingCalNext,
+    openBirthdayDay: openBirthdayDay,
+    editBirthday: editBirthday,
+    openBirthday: function () { openBirthdayModal(null); },
+    deleteBirthday: deleteBirthday,
+    teamCalPrev: teamCalPrev,
+    teamCalNext: teamCalNext,
+    openTask: function () { openTaskModal(null, null, calDayPick); },
+    editTask: editTask,
+    openCalDay: openCalDay,
+    calPrev: calPrev,
+    calNext: calNext,
+    setTeamPerson: setTeamPerson,
+    teamPrevWeek: teamPrevWeek,
+    teamNextWeek: teamNextWeek,
+    closeNotify: closeNotify,
+    openTaskFromNotify: openTaskFromNotify,
+    requestNotifyPermission: requestNotificationPermission,
+    exportBackup: exportBackup,
+    restoreFromBackup: restoreFromBackup,
+    importBackupFile: importBackupFile,
+    saveCloudSettings: saveCloudSettings,
+    uploadLocalToCloud: uploadLocalToCloud,
+    setFilter: function (name) {
+      globalTeamFilter = name;
+      refreshAll();
+    },
+    clearFilter: function () {
+      globalTeamFilter = null;
+      refreshAll();
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+  </script>
+</body>
+</html>
